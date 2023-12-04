@@ -76,7 +76,6 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
     useState<boolean>(false);
   const [handlingAction, setHandlingAction] = useState<boolean>(false);
 
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -116,6 +115,30 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
             }, 1000);
           } else {
             throw new Error('Failed to retrieve link');
+          }
+        }
+        case 'add_personality': {
+          console.log(args)
+  
+          const res = await fetch('/api/assistant/functions/interests', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: args.name,
+              interest: args.personality,
+              thread_id: selectedThread?.id,
+              run_id: lastestRun?.id,
+              call_id: funcCall.id,
+            }),
+          });
+  
+          if (res.ok) {
+            console.log('added personality');
+            setHandlingAction(false);
+          } else {
+            throw new Error('Failed to add personality');
           }
         }
         default:

@@ -14,7 +14,22 @@ const functions = [
         "properties": {
           "chat_name": {"type": "string", "description": "The name of the chat to send the user to.", "enum": ["Builders", "Artists", "Community Builders"]},
         },
-        "required": ["chat_name"]
+        "required": ["chat_name"],
+      },
+    },
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "add_personality",
+      "description": "Add your single sentence summary of the user's personality to the stored list of interests.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "description": "The name of the user"},
+          "personality": {"type": "string", "description": "your summary of the user's personality."}
+        },
+        "required": ["name", "personality"]
       }
     }
   }
