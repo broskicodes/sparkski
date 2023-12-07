@@ -259,6 +259,13 @@ export const ChatMessage: FC<Props> = memo(({ message, messageIndex, onEdit }) =
                       </td>
                     );
                   },
+                  a({ children, href }) {
+                    return (
+                      <a href={href} target='_blank'>
+                        {children}
+                      </a>
+                    );
+                  }
                 }}
               >
                 {`${message.content}${
