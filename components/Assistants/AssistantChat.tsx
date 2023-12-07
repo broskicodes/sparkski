@@ -292,12 +292,20 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
                     )}
                   </div>
                   {!assistant && (
-                    <div className="flex h-full flex-col space-y-4 rounded-lg border border-neutral-200 p-4 dark:border-neutral-600">
+                    <div className="flex items-center h-full flex-col space-y-8 rounded-lg border border-neutral-200 p-4 dark:border-neutral-600">
+                      <div className='flex flex-col space-y-4'>
+                        <div className="text-center text-xl font-semibold text-gray-800 dark:text-gray-100">
+                          {t('Find Your People')}
+                        </div>
+                        <div className="text-center text-sm text-gray-500 dark:text-gray-400 w-96">
+                          {t('Sparkski can help discover and connect with people who share your interests')}
+                        </div>
+                      </div>
                       <button
-                        className="bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2 px-4 rounded-lg"
+                        className="bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2 px-24 rounded-lg outline outline-1 hover:bg-gray-600"
                         onClick={async () => { await handleCreateNewAssistant(); await handleCreateNewThread(); } }
                       >
-                        {t('Create New Assistant')}
+                        {t('Talk to Sparkski')}
                       </button>
                     </div>
                   )}
