@@ -18,7 +18,9 @@ export enum RunStatus {
 
 export interface RequiredAction {
   type: string;
-  submit_tool_outputs: object;
+  submit_tool_outputs: {
+    tool_calls: any[]
+  };
 }
 
 export interface Run {

@@ -33,6 +33,8 @@ import { ModelSelect } from '../Chat/ModelSelect';
 import { MemoizedChatMessage } from '../Chat/MemoizedChatMessage';
 import { RunStatus, Thread } from '@/types/assistant';
 
+import Chats from '../../chats.json';
+
 interface Props {
   stopConversationRef: MutableRefObject<boolean>;
 }
@@ -72,13 +74,62 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [showScrollDownButton, setShowScrollDownButton] =
     useState<boolean>(false);
+  const [handlingAction, setHandlingAction] = useState<boolean>(false);
+
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const handleChatAction = useCallback(async () => {
+    setHandlingAction(true);
+
+    try {
+      const funcCall = lastestRun?.required_action.submit_tool_outputs.tool_calls[0];
+      const args = JSON.parse(funcCall.function.arguments);
+
+      switch (funcCall.function.name) {
+        case 'send_gc_link': {
+          console.log('send_gc_link', args);
+          const chatName: string = args.chat_name;
+          // @ts-ignore
+          const { description, link } = Chats[chatName];
+
+          const res = await fetch('/api/assistant/functions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              chat_link: link,
+              chat_description: description,
+              thread_id: selectedThread?.id,
+              run_id: lastestRun?.id,
+              call_id: funcCall.id,
+            }),
+          });
+  
+          if (res.ok) {
+            console.log('link sent');
+            setTimeout(() => {
+              setHandlingAction(false);
+            }, 1000);
+          } else {
+            throw new Error('Failed to retrieve link');
+          }
+        }
+        default:
+
+      }
+    } catch (error) {
+      console.log(error);
+      // setHandlingAction(false);
+    }
+    // console.log(lastestRun);
+  }, [selectedThread, lastestRun]);
   
   useEffect(() => {
+    console.log('lastestRun', lastestRun?.status);
     switch (lastestRun?.status) {
       case RunStatus.Completed:
         // TODO: handle completed run
@@ -99,15 +150,21 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
 
         break;
       case RunStatus.Failed:
+        toast.error(t('Run failed'));
       case RunStatus.Cancelled:
+        toast.error(t('Run cancelled'));
       case RunStatus.Expired:
+        toast.error(t('Run expired'));
         homeDispatch({ field: 'loading', value: false });
         homeDispatch({ field: 'messageIsStreaming', value: false });
-        toast.error(t('Run failed'));
+        homeDispatch({ field: 'lastestRun', value: undefined });
         break;
       case RunStatus.RequiresAction:
         // TODO: handle requires action
-        break;
+        if (!handlingAction) {
+          handleChatAction();
+        }
+        // break;
       case RunStatus.Queued:
       case RunStatus.InProgress:
         const pollInterval = setInterval(() => {
@@ -115,7 +172,7 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
         }, 1000);
         return () => clearInterval(pollInterval);
     }
-  }, [lastestRun]);
+  }, [lastestRun, handleChatAction, handlingAction, handlePollRun]);
 
   useEffect(() => {
     if (assistant && selectedThread) {
@@ -297,7 +354,7 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
                         <div className="text-center text-xl font-semibold text-gray-800 dark:text-gray-100">
                           {t('Find Your People')}
                         </div>
-                        <div className="text-center text-sm text-gray-500 dark:text-gray-400 w-96">
+                        <div className="text-center text-sm text-gray-500 dark:text-gray-400 sm:w-96">
                           {t('Sparkski can help discover and connect with people who share your interests')}
                         </div>
                       </div>
