@@ -32,8 +32,7 @@ import { ErrorMessageDiv } from '../Chat/ErrorMessageDiv';
 import { ModelSelect } from '../Chat/ModelSelect';
 import { MemoizedChatMessage } from '../Chat/MemoizedChatMessage';
 import { RunStatus, Thread } from '@/types/assistant';
-
-import Chats from '../../chats.json';
+import { saveRun } from '@/utils/app/run';
 
 interface Props {
   stopConversationRef: MutableRefObject<boolean>;
@@ -64,6 +63,7 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
     handleCreateNewThread,
     handleUpdateThread,
     handleCreateRun,
+    handleCancelRun,
     handlePollRun,
     handleUpdateConversation,
     dispatch: homeDispatch,
@@ -84,71 +84,34 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
     setHandlingAction(true);
 
     try {
-      const funcCall = lastestRun?.required_action.submit_tool_outputs.tool_calls[0];
-      const args = JSON.parse(funcCall.function.arguments);
-
-      switch (funcCall.function.name) {
-        case 'send_gc_link': {
-          console.log('send_gc_link', args);
-          const chatName: string = args.chat_name;
-          // @ts-ignore
-          const { description, link } = Chats[chatName];
-
-          const res = await fetch('/api/assistant/functions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              chat_link: link,
-              chat_description: description,
-              thread_id: selectedThread?.id,
-              run_id: lastestRun?.id,
-              call_id: funcCall.id,
-            }),
-          });
+      const tool_calls = lastestRun?.required_action.submit_tool_outputs.tool_calls;
+      console.log('tool_calls', tool_calls);
   
-          if (res.ok) {
-            console.log('link sent');
-            setTimeout(() => {
-              setHandlingAction(false);
-            }, 1000);
-          } else {
-            throw new Error('Failed to retrieve link');
-          }
-        }
-        case 'add_personality': {
-          console.log(args)
-  
-          const res = await fetch('/api/assistant/functions/interests', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              name: args.name,
-              interest: args.personality,
-              thread_id: selectedThread?.id,
-              run_id: lastestRun?.id,
-              call_id: funcCall.id,
-            }),
-          });
-  
-          if (res.ok) {
-            console.log('added personality');
-            setHandlingAction(false);
-          } else {
-            throw new Error('Failed to add personality');
-          }
-        }
-        default:
+      const res = await fetch('/api/assistant/function_calls', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tool_calls,
+          thread_id: selectedThread?.id,
+          run_id: lastestRun?.id,
+        }),
+      });
 
+      if (res.ok) {
+        const runData = await res.json();
+
+        homeDispatch({ field: 'lastestRun', value: runData });
+        saveRun(runData);
+        setHandlingAction(false);
+      } else {
+        setHandlingAction(false);
       }
     } catch (error) {
       console.log(error);
       // setHandlingAction(false);
     }
-    // console.log(lastestRun);
   }, [selectedThread, lastestRun]);
   
   useEffect(() => {
@@ -173,11 +136,11 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
 
         break;
       case RunStatus.Failed:
-        toast.error(t('Run failed'));
+        // toast.error(t('Run failed'));
       case RunStatus.Cancelled:
-        toast.error(t('Run cancelled'));
+        // toast.error(t('Run cancelled'));
       case RunStatus.Expired:
-        toast.error(t('Run expired'));
+        toast.error(t('Run stopped'));
         homeDispatch({ field: 'loading', value: false });
         homeDispatch({ field: 'messageIsStreaming', value: false });
         homeDispatch({ field: 'lastestRun', value: undefined });
@@ -188,6 +151,7 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
           handleChatAction();
         }
         // break;
+      case RunStatus.Cancelling:
       case RunStatus.Queued:
       case RunStatus.InProgress:
         const pollInterval = setInterval(() => {
@@ -251,7 +215,6 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
       threads,
       pluginKeys,
       selectedThread,
-      stopConversationRef,
     ],
   );
 
@@ -317,12 +280,23 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
   // }, [currentMessage]);
 
   useEffect(() => {
+    if (stopConversationRef.current && lastestRun) {
+      handleCancelRun(lastestRun.id).then((res) => {
+        if (res) {
+          setHandlingAction(false);
+          stopConversationRef.current = false;
+        }
+      });
+    }
+  }, [stopConversationRef, lastestRun]);
+
+  useEffect(() => {
     throttledScrollDown();
-    selectedConversation &&
+    selectedThread &&
       setCurrentMessage(
-        selectedConversation.messages[selectedConversation.messages.length - 2],
+        selectedThread.messages[selectedThread.messages.length - 1],
       );
-  }, [selectedConversation, throttledScrollDown]);
+  }, [selectedThread, throttledScrollDown]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -458,7 +432,16 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
             onScrollDownClick={handleScrollDown}
             onRegenerate={() => {
               if (currentMessage) {
-                handleSend(currentMessage, 2, null);
+                handleSend(currentMessage, 1, null);
+              } else {
+                if (selectedThread && selectedThread.messages.length === 0) {
+                  handleCreateRun().then((res) => {
+                    if (res) {
+                      homeDispatch({ field: 'loading', value: true });
+                      homeDispatch({ field: 'messageIsStreaming', value: true });
+                    }
+                  });
+                }
               }
             }}
             showScrollDownButton={showScrollDownButton}

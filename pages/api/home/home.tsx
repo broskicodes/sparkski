@@ -45,6 +45,7 @@ import { saveAssistant } from '@/utils/app/assistants';
 import { saveThread, updateThread } from '@/utils/app/thread';
 import { Assistant, Thread } from '@/types/assistant';
 import { saveRun } from '@/utils/app/run';
+import { r } from 'vitest/dist/types-94cfe4b4';
 
 interface Props {
   serverSideApiKeyIsSet: boolean;
@@ -186,6 +187,28 @@ const Home = ({
         key: 'messages',
         value: [...selectedThread!.messages, message]
       });
+
+      return true;
+    } catch (err) {
+      console.log(err);
+      return false;
+    }
+  }
+
+  const handleCancelRun = async (runId: string) => {
+    try {
+      const runResponse = await fetch(`/api/assistant/thread/${selectedThread?.id}/run/${runId}/cancel`, {
+        method: 'POST'
+      });
+
+      if (!runResponse.ok) {
+        throw (await runResponse.text())
+      }
+
+      const runData = await runResponse.json();
+
+      dispatch({ field: 'lastestRun', value: runData });
+      saveRun(runData);
 
       return true;
     } catch (err) {
@@ -497,6 +520,7 @@ const Home = ({
         handleCreateNewThread,
         handleUpdateThread,
         handleCreateRun,
+        handleCancelRun,
         handlePollRun,
         handleNewConversation,
         handleCreateFolder,

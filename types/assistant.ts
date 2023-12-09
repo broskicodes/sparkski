@@ -16,10 +16,19 @@ export enum RunStatus {
   Expired = "expired",
 }
 
+export interface ToolCall {
+  id: string;
+  type: string;
+  function: {
+    name: string;
+    arguments: string; // JSON string
+  }
+}
+
 export interface RequiredAction {
   type: string;
   submit_tool_outputs: {
-    tool_calls: any[]
+    tool_calls: ToolCall[]
   };
 }
 

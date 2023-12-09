@@ -1,0 +1,82 @@
+import { ToolCall } from '@/types/assistant';
+import { NextApiRequest, NextApiResponse } from 'next';
+import OpenAI from 'openai';
+import { RunSubmitToolOutputsParams } from 'openai/resources/beta/threads/runs/runs';
+
+import Chats from '../../../../chats.json';
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    const { run_id, thread_id, tool_calls  } = req.body;
+
+    const toolOutputs: RunSubmitToolOutputsParams.ToolOutput[] = await Promise.all(tool_calls.map(async (tool_call: ToolCall) => {
+      const { id: call_id, function: funcCall } = tool_call;
+      const args = JSON.parse(funcCall.arguments);
+      console.log(funcCall.name, args);
+
+      switch (funcCall.name) {
+        case 'send_gc_link': {
+          const chatName: string = args.chat_name;
+          // @ts-ignore
+          const { description, link } = Chats[chatName];
+
+          return {
+            tool_call_id: call_id,
+            output: link && description ? `link: ${link}, description: ${description}` : "There was an error. No chat could be found matching the user's interests."
+          }
+        }
+        case 'add_personality': {
+          const response = await fetch('https://interests-api.sparkpods.xyz/interests', {
+            method: 'POST',
+            body: JSON.stringify({
+              name: args.name,
+              interest: args.personality,
+              id: thread_id
+            }),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          
+
+          if (response.ok) {
+            return {
+              tool_call_id: call_id,
+              output: "User interests have been successfully recorded."
+            }
+          } else {
+            return {
+              tool_call_id: call_id,
+              output: "An error occurred while recording user interests."
+            }
+          }
+        }
+        default:
+          return {
+            tool_call_id: call_id,
+            output: "Error: Unhandled function call."
+          }
+      }
+    }));
+
+    const runData = await openai.beta.threads.runs.submitToolOutputs(
+      thread_id,
+      run_id,
+      {
+        tool_outputs: toolOutputs
+      }
+    )
+
+    res.status(200).json(runData);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+}

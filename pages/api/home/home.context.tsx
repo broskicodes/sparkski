@@ -16,6 +16,7 @@ export interface HomeContextProps {
   handleCreateNewThread: (messages?: Message[]) => Promise<void>;
   handleUpdateThread: (thread: Thread, data: KeyValuePair) => void;
   handleCreateRun: (message?: Message) => Promise<boolean>;
+  handleCancelRun: (runId: string) => Promise<boolean>;
   handlePollRun: (runId: string) => Promise<void>;
   handleNewConversation: () => void;
   handleCreateFolder: (name: string, type: FolderType) => void;
