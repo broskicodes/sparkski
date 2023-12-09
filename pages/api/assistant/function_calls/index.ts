@@ -5,10 +5,13 @@ import { RunSubmitToolOutputsParams } from 'openai/resources/beta/threads/runs/r
 
 import Chats from '../../../../chats.json';
 
+// export const runtime = 'edge';
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
+    // return new Response('Method not allowed', { status: 405 });
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
@@ -74,9 +77,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     )
 
+    // return new Response(JSON.stringify(runData), { status: 200 });
     res.status(200).json(runData);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    // return new Response('Internal Server Error', { status: 500 });
+    res.status(500).json({ error: 'An error occurred' });
   }
 }

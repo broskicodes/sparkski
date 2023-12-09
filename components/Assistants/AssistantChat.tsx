@@ -106,6 +106,29 @@ const AssistantChat = ({ stopConversationRef }: Props) => {
         saveRun(runData);
         setHandlingAction(false);
       } else {
+        if (res.status === 504) {
+          const toolCancelRes = await fetch('/api/assistant/function_calls/cancel', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              tool_calls,
+              thread_id: selectedThread?.id,
+              run_id: lastestRun?.id,
+            }),
+          });
+
+          if (toolCancelRes.ok) {
+            const runData = await toolCancelRes.json();
+
+            homeDispatch({ field: 'lastestRun', value: runData });
+            saveRun(runData);
+            setHandlingAction(false);
+          } else {
+            await handleCancelRun(lastestRun?.id as string);
+          }
+        }
         setHandlingAction(false);
       }
     } catch (error) {
