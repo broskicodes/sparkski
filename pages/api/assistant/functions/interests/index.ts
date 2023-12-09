@@ -5,21 +5,28 @@ export const runtime = 'edge';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: Request, res: Response) {
   if (req.method === 'GET') {
     try {
       const response = await fetch('https://interests-api.sparkpods.xyz/graphic');
       const data = Buffer.from(await response.arrayBuffer());
       
-      res.setHeader('Content-Type', 'image/png');
-      res.status(200).send(data);
+      // res.setHeader('Content-Type', 'image/png');
+      // res.status(200).send(data);
+      return new Response(data, {
+        headers: {
+          'Content-Type': 'image/png'
+        },
+        status: 200
+      });
     } catch (error) {
       console.error('Error:', error);
-      res.status(500).json({ message: 'Internal Server Error' });
+      return new Response('Internal Server Error', { status: 500 });
+      // res.status(500).json({ message: 'Internal Server Error' });
     }
   } else if (req.method === 'POST') {
     try {
-      const { name, interest, thread_id, run_id, call_id } = req.body;
+      const { name, interest, thread_id, run_id, call_id } = await req.json();
       const response = await fetch('https://interests-api.sparkpods.xyz/interests', {
         method: 'POST',
         body: JSON.stringify({
@@ -45,11 +52,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const data = await response.json();
 
-      res.status(200).json(data);
+      // res.status(200).json(data);
+      return new Response(JSON.stringify(data), { status: 200 });
     } catch (error) {
-      res.status(500).json({ message: 'Internal Server Error' });
+      // res.status(500).json({ message: 'Internal Server Error' });
+      return new Response('Internal Server Error', { status: 500 });
     }
   } else {
-    res.status(405).json({ message: 'Method Not Allowed' });
+    // res.status(405).json({ message: 'Method Not Allowed' });
+    return new Response('Method Not Allowed', { status: 405 });
   }
 }
