@@ -51,7 +51,7 @@ export const ChatInput = ({
   const { t } = useTranslation('chat');
 
   const {
-    state: { selectedConversation, messageIsStreaming, prompts },
+    state: { selectedConversation, messageIsStreaming, prompts, selectedThread },
 
     dispatch: homeDispatch,
   } = useContext(HomeContext);
@@ -323,8 +323,9 @@ export const ChatInput = ({
         )}
 
         {!messageIsStreaming &&
-          selectedConversation &&
-          selectedConversation.messages.length > 0 && (
+          selectedThread &&
+          (selectedThread.messages.length === 0 ||
+          selectedThread.messages.at(-1)?.role === "user") && (
             <button
               className="absolute top-0 left-0 right-0 mx-auto mb-3 flex w-fit items-center gap-3 rounded border border-neutral-200 bg-white py-2 px-4 text-black hover:opacity-50 dark:border-neutral-600 dark:bg-[#343541] dark:text-white md:mb-0 md:mt-2"
               onClick={onRegenerate}
